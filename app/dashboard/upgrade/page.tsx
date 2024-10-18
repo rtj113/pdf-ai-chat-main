@@ -1,0 +1,162 @@
+"use client"
+
+import { Button } from "@/components/ui/button";
+import { useUser } from "@clerk/nextjs";
+import { CheckIcon } from "lucide-react";
+import useSubscription from "@/hooks/useSubscription";
+import React, { useState, useTransition
+  // , useEffect
+} from "react";
+import getStripe from "@/lib/stripe-js";
+import Link from "next/link";
+import CompletePage from "../../../components/CompletePage";
+
+declare var process : {
+    env: {
+      [x: string]: string
+      NODE_ENV: string
+    }
+}
+interface Props {
+    [x: string]: any;
+    stripePublicKey: string,
+    clientSecret: string,
+    user?: any;
+    buyButtonId?: string;
+    publishableKey?: string;
+    priceId: string;
+    onSuccess: (session: any) => void;
+    // onClick?: MouseEventHandler<Props>;
+    onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    disabled: boolean;
+    variant: string;
+    userDetails: {
+      id: number;
+        email:string;
+        name: string;
+        hasActiveMembership: any;
+    }
+    stripePromise: string;
+}
+export type UserDetails = {
+    email: string;
+    name: string;
+    hasActiveMembership: any;
+  };
+  function UpgradePage(props: Props) {
+    const [loading
+      // , setLoading
+    ] = useState(false);
+    const { user } = useUser();
+    const { hasActiveMembership } = useSubscription();
+    const [isPending
+      // , startTransition
+    ] = useTransition();
+    // const router = useRouter()
+    // const router = useRouter();
+    // const stripe = getStripe(props.stripePublicKey);
+    const handleUpgrade = async () => {
+      if (!user) return;
+        const userDetails: UserDetails = {
+          email: user.primaryEmailAddress?.toString()!,
+          name: user.fullName!,
+          hasActiveMembership: user.getOrganizationMemberships,
+        };
+        const response = await fetch('/api/checkout_sessions', {
+          method: 'POST',
+        });
+        const stripeClient = getStripe(
+          process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+      );
+        const stripe = await stripeClient;
+        console.log('response: ', response);
+        const session = await response.json();
+        console.log('session: ', session);
+          await stripe?.redirectToCheckout( session );
+        if (!hasActiveMembership || !stripe) {
+          return
+        } else if (hasActiveMembership){
+          const sessionId = await response.json();
+          stripe?.redirectToCheckout({ sessionId });
+          if (sessionId.error) {
+              console.error(sessionId.error.message);
+            }
+        }
+    };
+    return (
+        <div className="container mx-auto px-4 py-16">
+            <div className="text-center mb-16">
+                <h2 className="text-xl text-indigo-600 font-semibold mb-4">Planes de Precios</h2>
+                <h1 className="text-4xl text-slate-800 font-bold mb-4">Aumente la Productividad de sus Documentos con la IA</h1>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Elija un plan asequible repleto de las mejores funciones para interactuar con su documento PDF, mejorar la productividad y agilizar su proceso de flujo de trabajo.
+                </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+                {/* Free Plan */}
+                <div className="border rounded-3xl p-8 pt-10 pb-12 shadow-lg">
+                    <h3 className="text-2xl font-semibold leading-8 text-gray-600">Plan de Inicio</h3>
+                    <p className="mb-4 text-sm leading-6 text-gray-600">Explore las funciones principales sin coste adicional</p><span className="text-4xl font-bold tracking-tight text-gray-900">Gratuito</span>
+                    <p className="text-3xl mt-1 font-bold mb-6">$0<span className="text-xl font-normal text-gray-600">/mes</span></p>
+                    <ul className="space-y-3 mb-20 mt-8 text-sm leading-6 text-gray-600">
+                        {['2 Documentos disponibles', 'Hasta 3 mensajes por documento', 'Asistencia por correo electronico', 'Pruebe la función de chat AI'].map((feature, index) => (
+                            <li key={index} className="flex gap-x-3 items-center">
+                                <CheckIcon className="h-5 w-5 text-green-500 mr-2" />
+                                <span>{feature}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <Button className="w-full px-4 py-2" variant="outline" id="checkout-button" asChild><Link href="/dashboard">Plan Actual</Link></Button>
+                </div>
+
+                {/* Premium Plan */}
+                <div className="border rounded-3xl p-8 pb-12 shadow-lg ring-4 ring-indigo-600 text-primary-foreground">
+                    <h3 className="text-2xl font-semibold leading-8 text-indigo-600">Plan Profesional</h3>
+                    <p className="mb-4 text-sm leading-6 text-gray-600">Funciones básicas y premium para el día a día</p>
+                    <p className="text-4xl mt-6 font-bold mb-6 tracking-tight text-gray-900">$5.99<span className="text-sm font-semibold leading-6 text-gray-600">/mes</span></p>
+                    <ul className="space-y-3 mb-8 mt-8 text-sm leading-6 text-gray-600">
+                        {['Todas las funciones gratuitas', 'Almacene hasta 20 documentos', 'Posibilidad de eliminar documentos', 'Hasta 100 mensajes por documento', 'Funcionalidad completa de chat Power AI con recuperación de memoria', 'Tiempo de respuesta de asistencia de 24 horas'].map((feature, index) => (
+                            <li key={index} className="flex items-center gap-x-3">
+                                <CheckIcon className="h-5 w-5 text-green-300 mr-2" />
+                                <span>{feature}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <Button
+                            className="bg-indigo-600 w-full text-white shadow-sm hover:bg-indigo-500 mt-6 block rounded-md px-3 py-2 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            disabled={loading || isPending}
+                            onClick={handleUpgrade}
+                            >
+                            { isPending ? "Cargando..."
+                                : hasActiveMembership
+                                ? "Manage Subscription"
+                                : "Actualizar"}
+                        </Button>
+                </div>
+                                
+                {/* Business Plan */}
+                <div className="border rounded-3xl p-8 pb-12 ring-2 ring-slate-800 shadow-lg text-primary-foreground">
+                    <h3 className="text-2xl font-semibold leading-8 text-gray-900">Pequeñas Empresas</h3>
+                    <p className="mb-4 text-sm leading-6 text-gray-600">Plan de inicio más funciones mejoradas para empresas</p>
+                    <p className="text-3xl text-gray-900 mt-6 font-semibold tracking-tight mb-6">Contáctenos</p>
+                    <ul className="space-y-3 mb-8 mt-8 text-sm leading-6 text-gray-600">
+                        {['Todas las funciones del Plan Profesional', 'Almacena hasta 100 documentos', 'Hasta 500 mensajes por documento', 'Ultima funcionalidad de chat Power AI con recuperación de memoria', 'Acceso a las funciones personalizadas', 'Tiempo de respuesta del soporte 24 hora'].map((feature, index) => (
+                            <li key={index} className="flex gap-x-3 items-center">
+                                <CheckIcon className="h-5 w-5 text-green-500 mr-2" />
+                                <span>{feature}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <Button 
+                    className="bg-slate-800 w-full px-3 py-2 text-white hover:text-white items-center hover:bg-slate-700 shadow-sm mt-6 block rounded-md text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-700" 
+                    variant="outline" 
+                    asChild>
+                    <Link href="/dashboard">Contáctenos</Link></Button>
+                </div>
+            </div>
+        </div>
+    )
+};
+
+export default UpgradePage;
