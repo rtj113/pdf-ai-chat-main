@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@clerk/nextjs": "^5.5.3",
+    "@clerk/nextjs": "^5.7.5",
     "@langchain/community": "^0.2.31",
     "@langchain/core": "^0.2.31",
     "@langchain/openai": "^0.2.8",
@@ -27,6 +27,7 @@
     "avatar": "^0.1.0",
     "byte-size": "^9.0.0",
     "class-variance-authority": "^0.7.0",
+    "clerk": "^0.8.3",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "firebase": "^10.13.2",
