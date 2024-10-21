@@ -73,7 +73,7 @@ export type UserDetails = {
                 name: user.fullName,
               }),
           });
-            const stripe = await getStripe();
+            const stripe = await getStripe(response);
             console.log('response: ', response);
             const session = await response.json();
             console.log('session: ', session);
