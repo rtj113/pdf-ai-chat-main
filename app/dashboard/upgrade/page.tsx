@@ -1,12 +1,41 @@
 "use client"
 
 import { Button } from "@/components/ui/button";
-import { useUser } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignUpButton, useUser } from "@clerk/nextjs";
 import { CheckIcon } from "lucide-react";
 import useSubscription from "@/hooks/useSubscription";
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 import getStripe from "@/lib/stripe-js";
 import Link from "next/link";
+
+declare var process : {
+  env: {
+    [x: string]: string
+    NODE_ENV: string
+  }
+}
+
+interface Props {
+  [x: string]: any;
+  stripePublicKey: string,
+  clientSecret: string,
+  user?: any;
+  buyButtonId?: string;
+  publishableKey?: string;
+  priceId: string;
+  onSuccess: (session: any) => void;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled: boolean;
+  variant: string;
+  userDetails: {
+      email:string;
+      name: string;
+  //     stripeUserEmail: string;
+  //     stripeUserName: string;
+  //     stripeUserId: string;
+  }
+  stripePromise: string;
+}
 
 export type UserDetails = {
   email: string;
@@ -14,7 +43,7 @@ export type UserDetails = {
   hasActiveMembership: boolean;
 };
 
-function UpgradePage() {
+function UpgradePage(props: Props) {
   const [loading, setLoading] = useState(false);
   const { user } = useUser();
   const { hasActiveMembership } = useSubscription();
@@ -22,9 +51,8 @@ function UpgradePage() {
 
   const handleUpgrade = async () => {
     if (!user) return;
-    
     setLoading(true);
-    startTransition(async () => {
+    // startTransition(async () => {
       try {
         const response = await fetch('/api/checkout_sessions', {
           method: 'POST',
@@ -41,16 +69,20 @@ function UpgradePage() {
           throw new Error('Failed to create checkout session');
         }
 
+        const stripe = await getStripe();
+        console.log('response: ', response);
         const session = await response.json();
-        
-        const stripe = await getStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+        console.log('session: ', session);
+        await stripe?.redirectToCheckout( session );
+
+        // const { sessionId } = await response.json();
+  
+        // const stripe = await getStripe();
         if (!stripe) {
           throw new Error('Failed to load Stripe');
         }
 
-        const { error } = await stripe.redirectToCheckout({
-          sessionId: session.id,
-        });
+        const { error } = await stripe.redirectToCheckout( session );
 
         if (error) {
           throw error;
@@ -61,7 +93,7 @@ function UpgradePage() {
       } finally {
         setLoading(false);
       }
-    });
+    // });
   };
 
   return (
@@ -104,16 +136,23 @@ function UpgradePage() {
               </li>
             ))}
           </ul>
-          <Button
-            className="bg-indigo-600 w-full text-white shadow-sm hover:bg-indigo-500 mt-6 block rounded-md px-3 py-2 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            disabled={loading || isPending}
-            onClick={handleUpgrade}
-          >
-            {isPending ? "Cargando..."
-              : hasActiveMembership
-                ? "Manage Subscription"
-                : "Actualizar"}
-          </Button>
+          <SignedOut>
+            <SignUpButton mode="modal">
+              <Button variant="outline">Register</Button>
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
+            <Button
+              className="bg-indigo-600 w-full text-white shadow-sm hover:bg-indigo-500 mt-6 block rounded-md px-3 py-2 text-center text-sm font-semibold leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              disabled={loading || isPending}
+              onClick={handleUpgrade}
+            >
+              {isPending ? "Cargando..."
+                : hasActiveMembership
+                  ? "Manage Subscription"
+                  : "Actualizar"}
+            </Button>
+          </SignedIn>
         </div>
         
         {/* Business Plan */}

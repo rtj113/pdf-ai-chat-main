@@ -1,9 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button";
-import { useUser
-    // , SignInButton
-} from "@clerk/nextjs";
+import {  useUser, SignedIn, SignedOut, UserButton, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { CheckIcon } from "lucide-react";
 import useSubscription from "@/hooks/useSubscription";
 import React, { useEffect,
@@ -67,17 +65,27 @@ export type UserDetails = {
         };
           const response = await fetch('/api/checkout_sessions', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: user.primaryEmailAddress?.emailAddress,
+                name: user.fullName,
+              }),
           });
-          const stripeClient = getStripe(
-            process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-        );
-          const stripe = await stripeClient;
-          console.log('response: ', response);
-          const session = await response.json();
-          console.log('session: ', session);
+            const stripe = await getStripe();
+            console.log('response: ', response);
+            const session = await response.json();
+            console.log('session: ', session);
             await stripe?.redirectToCheckout( session );
           if (!hasActiveMembership || !stripe) {
-            return
+            return (
+                <SignedOut>
+                    <SignUpButton mode="modal">
+                        <Button variant="outline">Register</Button>
+                    </SignUpButton>
+                </SignedOut>
+            )
           } else if (hasActiveMembership){
             const sessionId = await response.json();
             stripe?.redirectToCheckout({ sessionId });
